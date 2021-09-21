@@ -1,0 +1,173 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "limit": 100,
+          "name": "Annotations & Alerts",
+          "showIn": 0,
+          "target": {
+            "limit": 100,
+            "matchAny": false,
+            "tags": [],
+            "type": "dashboard"
+          },
+          "type": "dashboard"
+        }
+      ]
+    },
+    "description": "Loki logs panel with prometheus variables",
+    "editable": true,
+    "gnetId": null,
+    "graphTooltip": 0,
+    "id": 2,
+    "iteration": 1632205143739,
+    "links": [],
+    "panels": [
+      {
+        "collapsed": true,
+        "datasource": null,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 10,
+        "panels": [
+          {
+            "datasource": "Loki",
+            "description": "Deployment Logs Panel",
+            "gridPos": {
+              "h": 14,
+              "w": 24,
+              "x": 0,
+              "y": 1
+            },
+            "id": 4,
+            "options": {
+              "dedupStrategy": "none",
+              "enableLogDetails": true,
+              "prettifyLogMessage": false,
+              "showCommonLabels": false,
+              "showLabels": false,
+              "showTime": true,
+              "sortOrder": "Descending",
+              "wrapLogMessage": true
+            },
+            "pluginVersion": "7.5.5",
+            "targets": [
+              {
+                "expr": "{job=\"$log_group\", container_name=~\"$containername\"} |~ \"$Search\"",
+                "refId": "A"
+              }
+            ],
+            "title": "Deployment Logs Panel",
+            "type": "logs"
+          }
+        ],
+        "title": "Container Logs",
+        "type": "row"
+      }
+    ],
+    "refresh": false,
+    "schemaVersion": 30,
+    "style": "dark",
+    "tags": [
+      "Loki",
+      "docker"
+    ],
+    "templating": {
+      "list": [
+        {
+          "allValue": null,
+          "current": {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": "Loki",
+          "definition": "label_values(job)",
+          "description": "all log group in the cluster",
+          "error": null,
+          "hide": 0,
+          "includeAll": true,
+          "label": "log_group",
+          "multi": false,
+          "name": "log_group",
+          "options": [],
+          "query": "label_values(job)",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "tagValuesQuery": "",
+          "tagsQuery": "",
+          "type": "query",
+          "useTags": false
+        },
+        {
+          "allValue": null,
+          "current": {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          "datasource": "Loki",
+          "definition": "label_values(container_name)",
+          "description": "all container in the cluster",
+          "error": null,
+          "hide": 0,
+          "includeAll": true,
+          "label": "container_name",
+          "multi": false,
+          "name": "containername",
+          "options": [],
+          "query": "label_values(container_name)",
+          "refresh": 1,
+          "regex": "",
+          "skipUrlSync": false,
+          "sort": 1,
+          "tagValuesQuery": "",
+          "tagsQuery": "",
+          "type": "query",
+          "useTags": false
+        },
+        {
+          "current": {
+            "selected": true,
+            "text": "",
+            "value": ""
+          },
+          "description": "search specific keyword",
+          "error": null,
+          "hide": 0,
+          "label": "Search",
+          "name": "Search",
+          "options": [
+            {
+              "selected": true,
+              "text": "",
+              "value": ""
+            }
+          ],
+          "query": "",
+          "skipUrlSync": false,
+          "type": "textbox"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-30m",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Loki Dashboard - Quick Search",
+    "uid": "9O-HIVNnz",
+    "version": 1
+  }
