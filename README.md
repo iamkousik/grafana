@@ -1,1 +1,1 @@
-# grafana
+# Setup Grafana in Docker Swarm
