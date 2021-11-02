@@ -10,7 +10,7 @@ pipeline {
     }
     options {
     	buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
-  	}
+    }
     parameters {    
       string(name: 'RepositoryURL', defaultValue: 'https://github.com/iamkousik/grafana.git',  description: 'Bitbucket repository URL.')
       string(name: 'BranchName',  defaultValue: 'development',  description: 'Bitbucket repository branch name.')
@@ -24,7 +24,7 @@ pipeline {
                     load "./${environmentFileName}"                    
                 }
         }        
-	    stage('Modify Docker Deployment') {
+	stage('Modify Docker Deployment') {
           steps {
             dir ("${WORKSPACE}") {
             powershell script:
@@ -33,9 +33,9 @@ pipeline {
             (Get-Content -path $DockerDeploymentFiles -Raw).replace('\${ImageVersion}', '$env.image_version') | Set-Content -path $DockerDeploymentFiles
             cat $DockerDeploymentFiles
             """
-		    }
-		  }
-	    }
+            }
+          }
+	}
         stage('Docker Cluster Deployment') {
           steps {
             script {
