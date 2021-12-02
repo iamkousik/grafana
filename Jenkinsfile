@@ -34,17 +34,13 @@ pipeline {
         stage('Download Application Codebase') {
             steps { 
                 dir ("${WORKSPACE}") {
-                  //powershell script:
-                  //"""
-                  //New-Item -Path '$ApplicationDirName' -ItemType Directory
-                  //"""
-                    //dir("$ApplicationDirName") {
+                    sh "mkdir -p ${ApplicationDirName}" 
+                    dir("${ApplicationDirName}") {
                         script {
                                 if ( repository_clone_0_name == "http" ) {
-                                    repository_url = "${repository_clone_0_href}"
+                                    repository_url = sh (script: "echo ${repository_clone_0_href}", returnStdout: true).trim()
                                 } else {
-                                    repository_url = "${repository_clone_1_href}"
-                                    echo "${repository_clone_1_href}"
+                                    repository_url = sh (script: "echo ${repository_clone_1_href}", returnStdout: true).trim()
                                 }
                                 if (pr_action == "pr:merged") {
                                     checkout scm: [$class: 'GitSCM', userRemoteConfigs: [[url: "${repository_url}", credentialsId: "BitbucketUser"]], 
