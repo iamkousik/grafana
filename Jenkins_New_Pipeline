@@ -1,0 +1,129 @@
+//def environmentFileName = ".\\${params.DockerDeploymentFiles}\\image.properties"
+def jobName = currentBuild.fullDisplayName
+choiceArray = ["Accounting-API-Docker","AR-Docker","BFF-Docker","CRM-RestApi-Docker","DIA-Excel-Docker","DIA-WebApi-Docker","DIA-Web-Docker","DIH-ReportEngine-Docker","DIH-SyncEngine-Docker","DIH-WebApi-Docker","DIH-WebApp-Docker","FPM-Service-Docker","Investran-SignalR","RS-Delivery-Docker","RS-Docker","RS-ExportService-Docker","RS-ImportService-Docker","RW-ExcelAddIn-Docker","RW-Export-Docker","RW-Import-Docker","RW-WebApi-Docker","RW-WebServices-Docker" ]
+
+properties([
+    parameters([
+            choice(choices: choiceArray.collect { "$it\n" }.join(''),
+                    description: 'Choose an Apllication',
+                    name: 'DEPLOY_RELEASE')
+    ])
+])
+
+pipeline {
+    agent {
+      label 'master'
+    }
+    options {
+    	buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
+    }
+    parameters { 
+      string(name: 'RepositoryURL', defaultValue: 'https://bitbucket.fis.dev/scm/investran/investraninv.git',  description: 'Bitbucket repository URL.')
+      string(name: 'BranchName',  defaultValue: 'feature/investran-36',  description: 'Bitbucket repository branch name.')
+      string(name: 'BitBucketCredential',  defaultValue: '9fa06b24-ae6e-4ca8-87ba-8c4e8c0319dd',  description: 'Bitbucket repository branch name.')
+      string(name: 'ModuleName',  defaultValue: 'DIH',  description: 'Change Module Name')
+      string(name: 'DockerEnv',  defaultValue: 'DEV',  description: 'Change Docker Environment Name')
+      credentials(
+        credentialType: 'com.cloudbees.plugins.credentials.common.UsernamePasswordCredentials',
+        defaultValue: 'docker-dev-env',
+        description: 'The credentials needed to deploy.',
+        name: 'deployCredentialsId',
+        required: true
+      )
+    }                 
+    stages {
+      stage ('Source Code Checkout') {
+        steps {
+	        dir ("${WORKSPACE}") {
+            cleanWs()
+            checkout scm: [$class: 'GitSCM', userRemoteConfigs: [[url: "${params.RepositoryURL}", credentialsId: "${params.BitBucketCredential}"]],
+                branches: [[name: "${params.BranchName}"]]], poll: false
+                load ".\\docker\\/${params.ModuleName}\\/${DEPLOY_RELEASE}\\/${params.DockerEnv}\\image.properties"
+          }
+        }
+      }        
+      stage('Modify Baseline Config File') {
+        steps {
+          dir ("${WORKSPACE}") {
+            powershell script:
+            """
+            Copy-Item ".\\docker\\Docker_Deployment.sh" -Destination ".\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}"
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-base.yml -Raw).replace('\${RepositoryName}', '$env.RepositoryName') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-base.yml
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-base.yml -Raw).replace('\${ImageVersion}', '$env.image_version') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-base.yml
+            cat .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-base.yml
+            """
+          }
+        }
+      }
+      stage('Modify Env Specific File') {
+        steps {
+          dir ("${WORKSPACE}") {
+            powershell script:
+            """
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__envname__', '$env.name') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__hostname__', '$env.__hostname__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__extra_hosts__', '$env.__extra_hosts__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__published_port__', '$env.__published_port__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__volumes__', '$env.__volumes__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__DefaultConnection__', '$env.__DefaultConnection__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__SqlConnectionStringTemplate__', '$env.__SqlConnectionStringTemplate__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__InvestranAuthConnectionStringTemplate__', '$env.__InvestranAuthConnectionStringTemplate__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__ClientId__', '$env.__ClientId__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__ClientSecret__', '$env.__ClientSecret__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__RabbitMQUri__', '$env.__RabbitMQUri__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__UserName__', '$env.__UserName__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__Password__', '$env.__Password__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__SchedulerUri__', '$env.__SchedulerUri__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            (Get-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token -Raw).replace('__SchedulerUri__', '$env.__SchedulerUri__') | Set-Content -path .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            cat .\\docker\\$params.ModuleName\\${DEPLOY_RELEASE}\\docker-compose-env.yml.token
+            """
+          }
+        }
+      }
+      stage('Docker Cluster Deployment') {
+          steps {
+            script {
+              def remote = [:]
+                  remote.name = "$env.name"
+                  remote.host = "$env.dockerhost"
+                  remote.allowAnyHosts = true
+            withCredentials([usernamePassword(credentialsId: '${deployCredentialsId}', 
+              passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+                  remote.user = USERNAME
+                  remote.password = PASSWORD
+            dir ("${WORKSPACE}") {
+            sshCommand remote: remote, command: "mkdir -p /tmp/$env.__hostname__"
+            sshPut remote: remote, from: ".\\docker\\${params.ModuleName}\\${DEPLOY_RELEASE}", into: "/tmp/$env.__hostname__/"
+            sshCommand remote: remote, command: "ls -ltrh /tmp/$env.__hostname__/${DEPLOY_RELEASE}"
+            sshCommand remote: remote, command: "cd /tmp/$env.__hostname__/${DEPLOY_RELEASE}; dos2unix Docker_Deployment.sh; sh Docker_Deployment.sh $env.RepositoryName:$env.image_version $env.__hostname__"
+            sshRemove remote: remote, path: "/tmp/$env.__hostname__"
+              }
+            }
+          }
+        }
+      }
+    }     
+    post { 
+        always {
+          sleep 5
+          emailext attachLog: true, body: 'Please find the attachment', mimeType: 'text/plain', subject: "[Jenkins] ${jobName} Report", from: "manish.sanike@fisglobal.com", to: "manish.sanike@fisglobal.com", recipientProviders: [[$class: 'CulpritsRecipientProvider']]
+          cleanWs()
+        }
+     }    
+  }
+
+
+__hostname__="DEV-2020-DIH-WebAPI"
+__extra_hosts__="- "vwmazinvTRKR2.fisdev.local:10.7.185.122" - "vlmazinvtrkqlb1.fisdev.com:10.7.144.228""
+__published_port__="5400"
+__volumes__="- /data/investran/Logs/Docker/DIHWebApi/2020Dev:/usr/src/logs"
+__DefaultConnection__="Data Source=VWMAZINVTSQLAG.fisdev.local,1490;Database=MarketplaceDataDev2;Trusted_Connection=True;"
+__SqlConnectionStringTemplate__="Data Source=tcp:VWMAZINVTSQLAG.fisdev.local,1490;Initial Catalog=MarketplaceDataDev2;User Id={Username};Password={Password};"
+__InvestranAuthConnectionStringTemplate__="Data Source=tcp:vwmazinvtsqla02.fisdev.local,1490;Initial Catalog=InvTrunkDevMarketplace;User Id={Username};Password={Password};"
+__CallbackUrl__="https://vlmazinvtrkqlb1.fisdev.com:4437/callback%22
+__ClientId__="clientId"
+__ClientSecret__="clientSecret"
+__RabbitMQUri__="rabbitmq://vlmazinvtrkqsw4.fisdev.local:5671"
+__UserName__="UserName"
+__Password__="Password"
+__SchedulerUri__="rabbitmq://vlmazinvtrkqsw4.fisdev.local:5671/FIS.Scheduler"
